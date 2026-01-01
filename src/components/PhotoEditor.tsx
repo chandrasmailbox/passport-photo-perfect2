@@ -1,8 +1,10 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { PhotoSpec } from '@/data/photoSpecs';
-import { ZoomIn, ZoomOut, Move, RotateCcw } from 'lucide-react';
+import { ZoomIn, ZoomOut, Move, RotateCcw, Scan, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import { useFaceDetection } from '@/hooks/useFaceDetection';
+import { toast } from 'sonner';
 
 interface PhotoEditorProps {
   imageSrc: string;
@@ -22,6 +24,9 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [hasAutoDetected, setHasAutoDetected] = useState(false);
+  
+  const { detectFace, isDetecting } = useFaceDetection();
 
   // Calculate aspect ratio for the crop area
   const aspectRatio = photoSpec.width / photoSpec.height;
@@ -31,22 +36,79 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
     setScale(1);
     setPosition({ x: 0, y: 0 });
     setImageLoaded(false);
+    setHasAutoDetected(false);
   }, [imageSrc]);
 
-  const handleImageLoad = () => {
-    setImageLoaded(true);
-    // Auto-fit the image
-    if (imageRef.current && containerRef.current) {
-      const img = imageRef.current;
-      const container = containerRef.current;
-      const imgAspect = img.naturalWidth / img.naturalHeight;
+  const autoPositionFace = useCallback(async () => {
+    if (!imageRef.current || !containerRef.current) return;
+    
+    const img = imageRef.current;
+    const result = await detectFace(img);
+    
+    if (result?.face) {
+      const cropArea = containerRef.current.querySelector('.crop-area') as HTMLElement;
+      if (!cropArea) return;
       
-      // Start with a scale that fits the image nicely
-      if (imgAspect > aspectRatio) {
-        setScale(1.2);
-      } else {
-        setScale(1.2);
-      }
+      const cropRect = cropArea.getBoundingClientRect();
+      const containerRect = containerRef.current.getBoundingClientRect();
+      
+      // Calculate where face center should be in the crop area
+      // For passport photos, face should be centered horizontally
+      // and positioned so eyes are at the eyeLine position
+      const faceBox = result.face;
+      const faceCenterX = faceBox.x + faceBox.width / 2;
+      const eyeY = faceBox.y + faceBox.height * 0.35; // Eyes at ~35% of face height
+      
+      // Target eye position in crop area (from top)
+      const targetEyeFromTop = (100 - photoSpec.eyeLineFromBottom) / 100;
+      
+      // Calculate the scale needed to fit head properly
+      // Head height should be between min and max
+      const targetHeadHeight = (photoSpec.headHeightMin + photoSpec.headHeightMax) / 2;
+      const cropHeightMm = photoSpec.height;
+      const headRatio = targetHeadHeight / cropHeightMm;
+      
+      // Scale so face height matches target head height ratio
+      const currentFaceHeightRatio = faceBox.height / img.naturalHeight;
+      const cropHeightPx = cropRect.height;
+      const targetFaceHeightPx = cropHeightPx * headRatio;
+      const displayedImageHeight = cropHeightPx * 1.5; // Base height from style
+      const neededScale = (targetFaceHeightPx / (currentFaceHeightRatio * displayedImageHeight)) * 1.2;
+      
+      const newScale = Math.max(0.8, Math.min(2.5, neededScale));
+      setScale(newScale);
+      
+      // Calculate position offset to center face
+      const imgDisplayWidth = img.naturalWidth * (displayedImageHeight / img.naturalHeight) * newScale;
+      const imgDisplayHeight = displayedImageHeight * newScale;
+      
+      // Face center position in displayed image coordinates
+      const faceCenterXDisplay = (faceCenterX / img.naturalWidth) * imgDisplayWidth;
+      const eyeYDisplay = (eyeY / img.naturalHeight) * imgDisplayHeight;
+      
+      // Target position: face center should align with crop center, eyes with eye line
+      const cropCenterX = cropRect.width / 2;
+      const targetEyeY = cropRect.height * targetEyeFromTop;
+      
+      const offsetX = cropCenterX - faceCenterXDisplay;
+      const offsetY = targetEyeY - eyeYDisplay;
+      
+      setPosition({ x: offsetX, y: offsetY });
+      toast.success('Face detected and positioned');
+    } else {
+      toast.error('No face detected. Please position manually.');
+    }
+  }, [detectFace, photoSpec]);
+
+  const handleImageLoad = async () => {
+    setImageLoaded(true);
+    // Auto-detect face on first load
+    if (!hasAutoDetected && imageRef.current) {
+      setHasAutoDetected(true);
+      // Small delay to ensure image is fully rendered
+      setTimeout(() => {
+        autoPositionFace();
+      }, 100);
     }
   };
 
@@ -288,7 +350,20 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
         </div>
 
         {/* Action buttons */}
-        <div className="flex gap-3 justify-center">
+        <div className="flex gap-3 justify-center flex-wrap">
+          <Button 
+            variant="outline" 
+            onClick={autoPositionFace} 
+            className="gap-2"
+            disabled={isDetecting}
+          >
+            {isDetecting ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Scan className="w-4 h-4" />
+            )}
+            Auto-Detect Face
+          </Button>
           <Button variant="secondary" onClick={handleReset} className="gap-2">
             <RotateCcw className="w-4 h-4" />
             Reset
@@ -301,7 +376,7 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
 
         {/* Instructions */}
         <p className="text-xs text-center text-muted-foreground">
-          Drag the photo to position • Use slider to zoom • Align face with guides
+          Face auto-detected on upload • Click "Auto-Detect Face" to re-center • Drag to fine-tune
         </p>
       </div>
     </div>
