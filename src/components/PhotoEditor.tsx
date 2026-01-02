@@ -31,6 +31,15 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
   // Calculate aspect ratio for the crop area
   const aspectRatio = photoSpec.width / photoSpec.height;
 
+  // Calculate crop area dimensions
+  const getCropAreaStyle = () => {
+    const maxHeight = 320;
+    const height = maxHeight;
+    const width = height * aspectRatio;
+    return { width, height };
+  };
+  const cropStyle = getCropAreaStyle();
+
   // Reset position and scale when image changes
   useEffect(() => {
     setScale(1);
@@ -46,59 +55,60 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
     const result = await detectFace(img);
     
     if (result?.face) {
-      const cropArea = containerRef.current.querySelector('.crop-area') as HTMLElement;
-      if (!cropArea) return;
-      
-      const cropRect = cropArea.getBoundingClientRect();
-      const containerRect = containerRef.current.getBoundingClientRect();
-      
-      // Calculate where face center should be in the crop area
-      // For passport photos, face should be centered horizontally
-      // and positioned so eyes are at the eyeLine position
       const faceBox = result.face;
-      const faceCenterX = faceBox.x + faceBox.width / 2;
-      const eyeY = faceBox.y + faceBox.height * 0.35; // Eyes at ~35% of face height
       
-      // Target eye position in crop area (from top)
-      const targetEyeFromTop = (100 - photoSpec.eyeLineFromBottom) / 100;
+      // Get the base image display height (from style: cropStyle.height * 1.5)
+      const baseDisplayHeight = cropStyle.height * 1.5;
+      const baseDisplayWidth = (img.naturalWidth / img.naturalHeight) * baseDisplayHeight;
       
-      // Calculate the scale needed to fit head properly
-      // Head height should be between min and max
+      // Calculate face dimensions as ratios of original image
+      const faceTopRatio = faceBox.y / img.naturalHeight;
+      const faceCenterXRatio = (faceBox.x + faceBox.width / 2) / img.naturalWidth;
+      const faceHeightRatio = faceBox.height / img.naturalHeight;
+      
+      // Target: head should fill the oval guide properly
+      // Oval guide: starts at 8% from top, height is 65% of crop area
+      const ovalTopPercent = 0.08;
+      const ovalHeightPercent = 0.65;
+      const ovalCenterY = ovalTopPercent + ovalHeightPercent / 2; // ~40.5% from top
+      
+      // Target head height ratio in crop area (use middle of allowed range)
       const targetHeadHeight = (photoSpec.headHeightMin + photoSpec.headHeightMax) / 2;
-      const cropHeightMm = photoSpec.height;
-      const headRatio = targetHeadHeight / cropHeightMm;
+      const targetHeadRatio = targetHeadHeight / photoSpec.height;
       
-      // Scale so face height matches target head height ratio
-      const currentFaceHeightRatio = faceBox.height / img.naturalHeight;
-      const cropHeightPx = cropRect.height;
-      const targetFaceHeightPx = cropHeightPx * headRatio;
-      const displayedImageHeight = cropHeightPx * 1.5; // Base height from style
-      const neededScale = (targetFaceHeightPx / (currentFaceHeightRatio * displayedImageHeight)) * 1.2;
+      // Calculate required scale so face fills target head ratio
+      // At scale=1, face height in display = faceHeightRatio * baseDisplayHeight
+      // We want: (faceHeightRatio * baseDisplayHeight * scale) / cropStyle.height = targetHeadRatio
+      const requiredScale = (targetHeadRatio * cropStyle.height) / (faceHeightRatio * baseDisplayHeight);
+      const newScale = Math.max(0.8, Math.min(3, requiredScale));
       
-      const newScale = Math.max(0.8, Math.min(2.5, neededScale));
+      // Now calculate position to center face in oval
+      const scaledDisplayWidth = baseDisplayWidth * newScale;
+      const scaledDisplayHeight = baseDisplayHeight * newScale;
+      
+      // Face center in scaled display coordinates (relative to image center)
+      const faceCenterXInDisplay = (faceCenterXRatio - 0.5) * scaledDisplayWidth;
+      // Face vertical center (from chin up ~50% of face)
+      const faceCenterYRatio = faceTopRatio + faceHeightRatio * 0.5;
+      const faceCenterYInDisplay = (faceCenterYRatio - 0.5) * scaledDisplayHeight;
+      
+      // Target position: oval center in crop area
+      // Oval center is at (50%, 40.5%) of crop area, but image is centered at (50%, 50%)
+      // So we need to offset to align face center with oval center
+      const targetX = 0; // Face should be horizontally centered
+      const targetYFromCenter = (ovalCenterY - 0.5) * cropStyle.height;
+      
+      // Offset needed: target - current
+      const offsetX = targetX - faceCenterXInDisplay;
+      const offsetY = targetYFromCenter - faceCenterYInDisplay;
+      
       setScale(newScale);
-      
-      // Calculate position offset to center face
-      const imgDisplayWidth = img.naturalWidth * (displayedImageHeight / img.naturalHeight) * newScale;
-      const imgDisplayHeight = displayedImageHeight * newScale;
-      
-      // Face center position in displayed image coordinates
-      const faceCenterXDisplay = (faceCenterX / img.naturalWidth) * imgDisplayWidth;
-      const eyeYDisplay = (eyeY / img.naturalHeight) * imgDisplayHeight;
-      
-      // Target position: face center should align with crop center, eyes with eye line
-      const cropCenterX = cropRect.width / 2;
-      const targetEyeY = cropRect.height * targetEyeFromTop;
-      
-      const offsetX = cropCenterX - faceCenterXDisplay;
-      const offsetY = targetEyeY - eyeYDisplay;
-      
       setPosition({ x: offsetX, y: offsetY });
-      toast.success('Face detected and positioned');
+      toast.success('Face detected and aligned to standards');
     } else {
       toast.error('No face detected. Please position manually.');
     }
-  }, [detectFace, photoSpec]);
+  }, [detectFace, photoSpec, cropStyle.height]);
 
   const handleImageLoad = async () => {
     setImageLoaded(true);
@@ -225,16 +235,6 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
     const croppedDataUrl = canvas.toDataURL('image/jpeg', 0.95);
     onCropComplete(croppedDataUrl);
   };
-
-  // Calculate crop area dimensions
-  const getCropAreaStyle = () => {
-    const maxHeight = 320;
-    const height = maxHeight;
-    const width = height * aspectRatio;
-    return { width, height };
-  };
-
-  const cropStyle = getCropAreaStyle();
 
   return (
     <div className="space-y-4">
