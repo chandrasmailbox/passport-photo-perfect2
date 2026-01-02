@@ -72,15 +72,22 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
 
   const startCamera = async () => {
     try {
+      setIsCapturing(true);
+      // Small delay to ensure video element is mounted
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: 1280, height: 720 }
+        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
       });
       streamRef.current = stream;
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        await videoRef.current.play();
       }
-      setIsCapturing(true);
     } catch (error) {
+      console.error('Camera error:', error);
+      setIsCapturing(false);
       toast.error('Unable to access camera. Please check permissions.');
     }
   };
