@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { Upload, Camera, X } from 'lucide-react';
+import { Upload, Camera, X, SwitchCamera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -16,6 +16,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -70,14 +71,20 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
     }
   }, [handleFile]);
 
-  const startCamera = async () => {
+  const startCamera = async (mode: 'user' | 'environment' = facingMode) => {
     try {
+      // Stop existing stream first
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      
       setIsCapturing(true);
       // Small delay to ensure video element is mounted
       await new Promise(resolve => setTimeout(resolve, 100));
       
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
+        video: { facingMode: mode, width: { ideal: 1280 }, height: { ideal: 720 } }
       });
       streamRef.current = stream;
       
@@ -90,6 +97,12 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
       setIsCapturing(false);
       toast.error('Unable to access camera. Please check permissions.');
     }
+  };
+
+  const toggleCamera = async () => {
+    const newMode = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(newMode);
+    await startCamera(newMode);
   };
 
   const capturePhoto = () => {
@@ -143,6 +156,14 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
           >
             <X className="w-4 h-4" />
             Cancel
+          </Button>
+          <Button
+            variant="secondary"
+            size="lg"
+            onClick={toggleCamera}
+            className="gap-2"
+          >
+            <SwitchCamera className="w-4 h-4" />
           </Button>
           <Button
             size="lg"
@@ -221,7 +242,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
             Browse Files
           </Button>
           <Button
-            onClick={startCamera}
+            onClick={() => startCamera()}
             className="gap-2 btn-primary-glow"
           >
             <Camera className="w-4 h-4" />
