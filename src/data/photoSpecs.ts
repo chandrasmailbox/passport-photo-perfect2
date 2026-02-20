@@ -186,6 +186,82 @@ export const PHOTO_SPECS: PhotoSpec[] = [
       'No hats or sunglasses',
       'Taken within last 6 months'
     ]
+  },
+  {
+    id: 'custom-25x35',
+    country: '25×35mm',
+    flag: '📐',
+    width: 25,
+    height: 35,
+    widthInches: 0.98,
+    heightInches: 1.38,
+    headHeightMin: 20,
+    headHeightMax: 28,
+    eyeLineFromBottom: 55,
+    backgroundColor: '#FFFFFF',
+    dpi: 300,
+    notes: [
+      'Custom 25×35mm size',
+      'White background recommended',
+      'Face centered in frame'
+    ]
+  },
+  {
+    id: 'custom-20x30',
+    country: '20×30mm',
+    flag: '📐',
+    width: 20,
+    height: 30,
+    widthInches: 0.79,
+    heightInches: 1.18,
+    headHeightMin: 16,
+    headHeightMax: 24,
+    eyeLineFromBottom: 55,
+    backgroundColor: '#FFFFFF',
+    dpi: 300,
+    notes: [
+      'Custom 20×30mm size',
+      'White background recommended',
+      'Face centered in frame'
+    ]
+  },
+  {
+    id: 'custom-35x25',
+    country: '35×25mm',
+    flag: '📐',
+    width: 35,
+    height: 25,
+    widthInches: 1.38,
+    heightInches: 0.98,
+    headHeightMin: 18,
+    headHeightMax: 22,
+    eyeLineFromBottom: 50,
+    backgroundColor: '#FFFFFF',
+    dpi: 300,
+    notes: [
+      'Custom 35×25mm (landscape)',
+      'White background recommended',
+      'Face centered in frame'
+    ]
+  },
+  {
+    id: 'custom-30x20',
+    country: '30×20mm',
+    flag: '📐',
+    width: 30,
+    height: 20,
+    widthInches: 1.18,
+    heightInches: 0.79,
+    headHeightMin: 14,
+    headHeightMax: 18,
+    eyeLineFromBottom: 50,
+    backgroundColor: '#FFFFFF',
+    dpi: 300,
+    notes: [
+      'Custom 30×20mm (landscape)',
+      'White background recommended',
+      'Face centered in frame'
+    ]
   }
 ];
 
