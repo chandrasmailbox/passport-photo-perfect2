@@ -262,6 +262,44 @@ export const PHOTO_SPECS: PhotoSpec[] = [
       'White background recommended',
       'Face centered in frame'
     ]
+  },
+  {
+    id: 'custom-20x20',
+    country: '20×20mm',
+    flag: '📐',
+    width: 20,
+    height: 20,
+    widthInches: 0.79,
+    heightInches: 0.79,
+    headHeightMin: 14,
+    headHeightMax: 18,
+    eyeLineFromBottom: 50,
+    backgroundColor: '#FFFFFF',
+    dpi: 300,
+    notes: [
+      'Custom 20×20mm (square)',
+      'White background recommended',
+      'Face centered in frame'
+    ]
+  },
+  {
+    id: 'custom-30x30',
+    country: '30×30mm',
+    flag: '📐',
+    width: 30,
+    height: 30,
+    widthInches: 1.18,
+    heightInches: 1.18,
+    headHeightMin: 20,
+    headHeightMax: 26,
+    eyeLineFromBottom: 50,
+    backgroundColor: '#FFFFFF',
+    dpi: 300,
+    notes: [
+      'Custom 30×30mm (square)',
+      'White background recommended',
+      'Face centered in frame'
+    ]
   }
 ];
 
