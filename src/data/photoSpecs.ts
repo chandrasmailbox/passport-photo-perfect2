@@ -283,6 +283,25 @@ export const PHOTO_SPECS: PhotoSpec[] = [
     ]
   },
   {
+    id: 'custom-25x25',
+    country: '25×25mm',
+    flag: '📐',
+    width: 25,
+    height: 25,
+    widthInches: 0.98,
+    heightInches: 0.98,
+    headHeightMin: 17,
+    headHeightMax: 22,
+    eyeLineFromBottom: 50,
+    backgroundColor: '#FFFFFF',
+    dpi: 300,
+    notes: [
+      'Custom 25×25mm (square)',
+      'White background recommended',
+      'Face centered in frame'
+    ]
+  },
+  {
     id: 'custom-30x30',
     country: '30×30mm',
     flag: '📐',
